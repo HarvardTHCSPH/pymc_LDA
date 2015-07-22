@@ -1,52 +1,32 @@
-
-# coding: utf-8
-
-# In[1]:
-
-from pandas import *
 import numpy as np
-from matplotlib import *
 import matplotlib.pyplot as plt
-get_ipython().magic(u'matplotlib inline')
-from collections import Counter
 import pickle
 import pymc as pm
 
-
-# In[2]:
-
 prep_data = pickle.load(open('input.p', "rb" ) )
-
-
-# In[3]:
-
-prep_data
-
-
-# In[4]:
-
 prep_data['Tax ID'].plot(kind='hist') # show truth abundance ratios
 plt.title('The known relative abundance ratios')
 plt.xlabel('Species')
 plt.show()
 
-
-# # Partition the 'Tax ID's into 'documents'
-
-# In[5]:
+###################################################################################################################
+################################                 LOAD DATA                 ########################################
+###################################################################################################################
 
 data = pickle.load(open('data.p', "rb" ) )
 
-
-# In[8]:
-
+###################################################################################################################
+################################                 SET VARIABLES                 ####################################
+###################################################################################################################
 
 K = 4 # Number of topics , this is our Food or Pet topics, this would be limited to species -for first mock test 4
 V = len(prep_data['Tax ID'].unique())  # The total number of words in the vocabulary ( this would be all taxa) 
 # it is still unclear whether this should be all 
-M = len(data) # = len(data) #number of documents 
-Wd = [len(doc) for doc in data] #number of words in documents Nd = 1,..., M
-N = 0 #the total number of words in all documents
+M = len(data) # number of documents 
+Wd = [len(doc) for doc in data] # number of words in documents Nd = 1,..., M
+
+# the total number of words in all documents
+N = 0 
 for i in data:
     N = N + len(i)
 
@@ -60,6 +40,9 @@ print 'The number of words in document =', Wd
 print 'The number of words in all documents =', N
 
 
+###################################################################################################################
+################################                PyMC code                      ####################################
+###################################################################################################################
 
 phi = pm.Container([pm.CompletedDirichlet("phi_%s" % k, pm.Dirichlet("pphi_%s" % k, theta=beta)) for k in range(K)])
 theta = pm.Container([pm.CompletedDirichlet("theta_%s" % i, pm.Dirichlet("ptheta_%s" % i, theta=alpha)) for i in range(M)])
@@ -76,15 +59,17 @@ w = pm.Container([pm.Categorical("w_%i_%i" % (d,i),
                 observed=True)
               for d in range(M) for i in range(Wd[d])])
 
-
+###################################################################################################################
+################################                PyMC model                    ####################################
+###################################################################################################################
 
 model = pm.Model([theta, phi, z, w])
 mcmc = pm.MCMC(model)
 mcmc.sample(iter=10000, burn=1000, thin=10)
 
-
-# In[9]:
-
+###################################################################################################################
+################################                PyMC output                    ####################################
+###################################################################################################################
 
 theta_list = []
 for i in range(0,M):
@@ -110,10 +95,8 @@ print np.array(theta_list)
 print "PHI:  probability of words in topic D"
 print np.array(phi_list)
 
+###################################################################################################################
+################################                PyMC plotting                    ##################################
+###################################################################################################################
 
-# In[ ]:
-
-from pymc.Matplot import plot as mcplot
-
-mcplot(mcmc)
-
+pm.Matplot.plot(mcmc)
